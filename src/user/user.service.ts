@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { User } from './user.Entity';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
 import { IForgotpassword, ILogin, IResettpassword, ISignup, Iverify } from './user.dto';
 @Injectable()
@@ -10,6 +11,10 @@ export class UserService {
   async Signup(data: ISignup) {
     const user = await this.userepo.findOneBy({ userEmail: data.userEmail });
 
+
+
+    const saltOrRounds = 10;
+     const Encrypted_password = await bcrypt.hash(data.userPassword, saltOrRounds);
     const otp = Math.floor(100000 + Math.random() * 900000);
 
     if (user) {
@@ -18,7 +23,7 @@ export class UserService {
 
     const create = this.userepo.create({
       userEmail: data.userEmail,
-      userPassword: data.userPassword,
+      userPassword: Encrypted_password,
       userName: data.userName,
       otp: otp,
     });
@@ -54,11 +59,9 @@ export class UserService {
         HttpStatus.NOT_FOUND,
       );
     }
-    const newuser = await this.userepo.findOneBy({
-      userPassword: data.userPassword,
-    });
+    const IsMatch = await bcrypt.compare(data.userPassword, user.userPassword);
 
-    if (!user) {
+    if (!IsMatch) {
       throw new HttpException(
         'UserName Or Password is incorrect',
         HttpStatus.NOT_FOUND,
